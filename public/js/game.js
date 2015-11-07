@@ -160,6 +160,7 @@ var state = {
 
   view_group: null,
   last_click: null,
+  preload_sprite: null,
 }
 
 var game = new Phaser.Game(1280, 720, Phaser.AUTO, 'pavor-nocturnus', {
@@ -169,6 +170,10 @@ var game = new Phaser.Game(1280, 720, Phaser.AUTO, 'pavor-nocturnus', {
 });
 
 function preload() {
+  game.load.image('loading', 'assets/loading.jpg');
+  state.preload_sprite = game.add.sprite(0, 0, 'loading');
+  game.load.setPreloadSprite(state.preload_sprite);
+
   _.each(_.keys(VIEWS), function(view_key){
     _.each(GRUNGE_LEVELS, function(grunge_level){
       game.load.image('views/'+grunge_level+'/'+view_key, 'assets/views/'+grunge_level+'/'+view_key+'.jpg');
@@ -193,6 +198,9 @@ function preload() {
 }
 
 function create() {
+    state.preload_sprite.destroy();
+    state.preload_sprite = null;
+
     state.view_group = make_view_group(state.view_key, state.grunge_level);
     game.add.tween(state.view_group).from({alpha: 0}, 2000, 'Linear', true);
 }
@@ -288,7 +296,7 @@ function move_to_view(view_key) {
   if(view.enter_action){
     action = view.enter_action;
     view.enter_action = null; // only do it once
-    game.time.events.add(Phaser.Timer.SECOND * 1, function(){
+    game.time.events.add(Phaser.Timer.SECOND * 0.5, function(){
       perform_action(action);
     });
   }
