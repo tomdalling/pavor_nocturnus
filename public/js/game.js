@@ -88,11 +88,15 @@ var game = new Phaser.Game(1280, 720, Phaser.AUTO, 'pavor-nocturnus', {
 function preload() {
   _.each(_.keys(VIEWS), function(view_key){
     game.load.image('views/' + view_key, 'assets/views/'+view_key+'.jpg');
-  })
+  });
 
   _.each(_.keys(ITEMS), function(item_key){
     game.load.image('items/' + item_key, 'assets/items/'+item_key+'.png');
-  })
+  });
+
+  //TODO: download these js files and serve them locally (in case they change)
+  game.load.script('filterX', 'https://cdn.rawgit.com/photonstorm/phaser/master/filters/BlurX.js');
+  game.load.script('filterY', 'https://cdn.rawgit.com/photonstorm/phaser/master/filters/BlurY.js');
 }
 
 function create() {
@@ -144,6 +148,10 @@ function path_clicked(circle) {
 }
 
 function item_clicked(circle) {
+  var blurX = game.add.filter('BlurX');
+  var blurY = game.add.filter('BlurY');
+  state.view_group.filters = [blurX, blurY];
+
   item = ITEMS[circle.item_key];
   if(!item){
     console.log("No item found with key: " + item);
@@ -153,7 +161,7 @@ function item_clicked(circle) {
 
   bg = game.add.graphics(0, 0);
   group.add(bg);
-  bg.beginFill(0x000000, 0.8);
+  bg.beginFill(0x000000, 0.6);
   bg.drawRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
   bg.endFill();
 
@@ -171,6 +179,10 @@ function item_clicked(circle) {
     group.add(text);
     text.setTextBounds(0, GAME_HEIGHT - 300, GAME_WIDTH, 300);
   }
+
+  game.add.tween(bg).from({ alpha: 0 }, 1000, "Linear", true);
+  game.add.tween(image).from({ y: circle.y, x: circle.x, alpha: 0 }, 1000, "Linear", true);
+  game.add.tween(image.scale).from({ y: 0.2, x: 0.2 }, 1000, "Linear", true);
 }
 
 function view_sprite_clicked(sprite, point) {
@@ -178,5 +190,11 @@ function view_sprite_clicked(sprite, point) {
 }
 
 function dismiss_item_dialog(bg) {
-  bg.item_group.destroy();
+  state.view_group.filters = null;
+
+  group = bg.item_group;
+  tween = game.add.tween(group).to({alpha: 0}, 300, "Linear", true);
+  tween.onComplete.add(function(){
+    group.destroy();
+  })
 }
