@@ -4,14 +4,35 @@ var DEBUG = true;
 
 var ITEMS = {
   computer: {
-    text: 'What is Dix? This is foreign to me.',
-    has_dialog_image: true,
     has_view_image: false,
+    do_dialog: 'computer',
   },
+
+  key: {
+    has_view_image: true,
+    do_give: 'key',
+    do_destroy: true,
+    do_dialog: 'key',
+  },
+
+  door: {
+    do_choose: function(){ return player_has('key') ? 'unlocked' : 'locked'; },
+    locked: { do_dialog: 'door_locked' },
+    unlocked: { do_view: 'corridor' },
+  }
+}
+
+var DIALOGS = {
   key: {
     text: 'Why does my house key have the Suzuki logo on it?',
-    has_dialog_image: true,
-    has_view_image: true,
+    image: true,
+  },
+  computer: {
+    text: 'What is Dix? This is foreign to me.',
+    image: true,
+  },
+  door_locked: {
+    text: 'The door is locked',
   }
 }
 
@@ -62,10 +83,12 @@ var VIEWS = {
 
   hallway_backward_entrance: {
     paths: {
-      corridor: [694.5, 355],
       hallway_forward: [1107.5, 695],
       bathroom: [264.5, 392],
     },
+    items: {
+      door: [694.5, 355],
+    }
   },
 
   hallway_backward_couch: {
@@ -88,6 +111,8 @@ var VIEWS = {
 
 var state = {
   view_key: 'livingroom_backward',
+  inventory: [],
+
   view_group: null,
   last_click: null,
 }
@@ -103,15 +128,17 @@ function preload() {
     game.load.image('views/' + view_key, 'assets/views/'+view_key+'.jpg');
   });
 
-  _.each(_.keys(ITEMS), function(item_key){
-    item = ITEMS[item_key];
-    if(item.has_dialog_image){
-      game.load.image('items/' + item_key + '/dialog', 'assets/items/'+item_key+'_dialog.png');
-    }
+  _.each(ITEMS, function(item, item_key){
     if(item.has_view_image){
-      game.load.image('items/' + item_key + '/view', 'assets/items/'+item_key+'.png');
+      game.load.image('items/' + item_key, 'assets/items/'+item_key+'.png');
     }
   });
+
+  _.each(DIALOGS, function(dialog, key){
+    if(dialog.image){
+      game.load.image('dialogs/' + key, 'assets/dialogs/'+key+'.png');
+    }
+  })
 
   //TODO: download these js files and serve them locally (in case they change)
   game.load.script('filterX', 'https://cdn.rawgit.com/photonstorm/phaser/master/filters/BlurX.js');
@@ -119,16 +146,21 @@ function preload() {
 }
 
 function create() {
-    state.view_group = make_view_group(state.view_key)
+    state.view_group = make_view_group(state.view_key);
 }
 
 function render() {
   if(DEBUG){
     game.debug.text(state.view_key, 10, 20, 'red');
+    game.debug.text('Inventory: ' + state.inventory.join(', '), 10, 40, 'red');
     if(state.last_click){
-      game.debug.text("Last clicked at: [" + state.last_click[0] + ", " + state.last_click[1] + "]", 10, 40, 'red');
+      game.debug.text("Last clicked at: [" + state.last_click[0] + ", " + state.last_click[1] + "]", 10, 60, 'red');
     }
   }
+}
+
+function player_has(thing) {
+  return _.contains(state.inventory, thing);
 }
 
 function make_view_group(view_key) {
@@ -150,40 +182,76 @@ function make_view_group(view_key) {
     circle.drawCircle(0, 0, 80);
     circle.endFill();
     circle.inputEnabled = true;
-    circle.events.onInputDown.add(path_clicked);
-    circle.next_view_key = adj_vk;
+    circle.events.onInputDown.add(function(){ move_to_view(adj_vk) });
     group.add(circle);
   })
 
   _.each(v.items, function(coord, item_key){
-    var circle = game.add.graphics(coord[0], coord[1]);
-    circle.beginFill(0xFF0000, 0.3);
-    circle.drawCircle(0, 0, 80);
-    circle.endFill();
-    circle.inputEnabled = true;
-    circle.events.onInputDown.add(show_item_dialog, {item_key: item_key, from: circle});
-    group.add(circle);
-
     item = ITEMS[item_key];
-    if(item.has_view_image){
-      var img = game.add.sprite(coord[0], coord[1], 'items/' + item_key + '/view');
-      img.anchor.setTo(0.5, 0.5);
-      group.add(img);
+    if(!item.destroyed){
+      var circle = game.add.graphics(coord[0], coord[1]);
+      circle.beginFill(0xFF0000, 0.3);
+      circle.drawCircle(0, 0, 80);
+      circle.endFill();
+      circle.inputEnabled = true;
+      circle.events.onInputDown.add(function(){ activate_item(get_item(item_key), circle) })
+      group.add(circle);
+
+      if(item.has_view_image){
+        var img = game.add.sprite(coord[0], coord[1], 'items/'+item_key);
+        img.anchor.setTo(0.5, 0.5);
+        group.add(img);
+      }
     }
   })
 
   return group;
 }
 
-function path_clicked(circle) {
-  state.view_group.destroy();
-  state.last_click = null;
-  state.view_key = circle.next_view_key;
-  state.view_group = make_view_group(state.view_key);
+function get_item(key){
+  item = ITEMS[key];
+  if(!item){ console.log("Can't find item '" + key + "'"); }
+  return item;
 }
 
-function show_item_dialog() {
+function move_to_view(view_key) {
+  state.view_group.destroy();
+  state.last_click = null;
+  state.view_key = view_key;
+  state.view_group = make_view_group(view_key);
+}
+
+function activate_item(item, sprite) {
+  if(item.do_give){
+    state.inventory.push(item.do_give);
+  }
+
+  if(item.do_destroy){
+    item.destroyed = true;
+    //TODO: removes circle, but not the actual sprite
+    sprite.destroy();
+  }
+
+  if(item.do_choose){
+    subitem_key = item.do_choose();
+    activate_item(item[subitem_key], sprite);
+  }
+
+  if(item.do_dialog){
+    show_item_dialog(item.do_dialog, sprite);
+  }
+
+  if(item.do_view){
+    move_to_view(item.do_view);
+  }
+}
+
+function show_item_dialog(dialog_key, sprite) {
   group = game.add.group();
+  dialog = DIALOGS[dialog_key];
+  if(!dialog){
+    console.log("Missing dialog '" + dialog_key + "'");
+  }
 
   // blur background
   blurs = [game.add.filter('BlurX'), game.add.filter('BlurY')];
@@ -202,30 +270,24 @@ function show_item_dialog() {
   bg.endFill();
   bg.inputEnabled = true;
   bg.item_group = group;
-  bg.events.onInputDown.add(dismiss_item_dialog, { blurs: blurs, group: group });
+  bg.events.onInputDown.add(function(){ dismiss_item_dialog(blurs, group) });
   game.add.tween(bg).from({ alpha: 0 }, 1000, "Linear", true);
 
-  // get the item
-  item = ITEMS[this.item_key];
-  if(!item){
-    console.log("No item found with key: " + item);
-  }
-
   // show image (if available)
-  if(item.has_dialog_image){
-    image_h_space = item.text ? GAME_HEIGHT * 0.7 : GAME_HEIGHT
-    image = game.add.sprite(GAME_WIDTH/2, image_h_space/2, 'items/' + this.item_key + '/dialog');
+  if(dialog.image){
+    image_h_space = dialog.text ? GAME_HEIGHT * 0.7 : GAME_HEIGHT
+    image = game.add.sprite(GAME_WIDTH/2, image_h_space/2, 'dialogs/' + dialog_key);
     group.add(image);
     image.anchor.setTo(0.5, 0.5)
-    game.add.tween(image).from({ y: this.from.y, x: this.from.x, alpha: 0 }, 1000, "Linear", true);
+    game.add.tween(image).from({ y: sprite.y, x: sprite.x, alpha: 0 }, 1000, "Linear", true);
     game.add.tween(image.scale).from({ y: 0.2, x: 0.2 }, 1000, "Linear", true);
   }
 
   // show text (if available)
-  if(item.text){
-    text_h_space = item.has_dialog_image ? GAME_HEIGHT * 0.3 : GAME_HEIGHT;
+  if(dialog.text){
+    text_h_space = dialog.image ? GAME_HEIGHT * 0.3 : GAME_HEIGHT;
     text_style = { fill: "#fff", boundsAlignH: "center", boundsAlignV: "middle" };
-    text = game.add.text(0, 0, item.text, text_style);
+    text = game.add.text(0, 0, dialog.text, text_style);
     group.add(text);
     text.setTextBounds(0, GAME_HEIGHT - text_h_space, GAME_WIDTH, text_h_space);
   }
@@ -236,12 +298,12 @@ function view_sprite_clicked(sprite, point) {
   state.last_click = [point.x, point.y];
 }
 
-function dismiss_item_dialog() {
-  _.each(this.blurs, function(b){
+function dismiss_item_dialog(blurs, group) {
+  _.each(blurs, function(b){
     game.add.tween(b).to({blur: 0}, 300, "Linear", true);
   });
 
-  tween = game.add.tween(this.group).to({alpha: 0}, 300, "Linear", true);
+  tween = game.add.tween(group).to({alpha: 0}, 300, "Linear", true);
   tween.onComplete.add(function(){
     group.destroy();
     state.view_group.filters = null;
