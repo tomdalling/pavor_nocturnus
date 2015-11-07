@@ -8,6 +8,7 @@ var VIEWS = {
     paths: {
       bed: [963, 466],
       livingroom_forward: [640, 527],
+      hallway_backward: [392.5, 702],
     },
   },
 
@@ -30,7 +31,21 @@ var VIEWS = {
   },
 
   hallway_backward: {
-    paths: {}
+    paths: {
+      corridor: [694.5, 355],
+      hallway_forward: [1107.5, 695],
+      bathroom: [264.5, 392],
+    },
+  },
+
+  corridor: {
+    paths: { hallway_backward: [667.5, 703] },
+  },
+
+  bathroom: {
+    paths: {
+      hallway_backward: [1257.5, 494],
+    },
   }
 }
 
