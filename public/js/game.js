@@ -5,7 +5,10 @@ var VIEWS = {
   },
 
   bed_backward: {
-    paths: { hallway_forward: [132.5, 663] },
+    paths: {
+      hallway_forward: [132.5, 663],
+      bed_forward: [636.5, 397],
+    },
   },
 
   hallway_forward: {
