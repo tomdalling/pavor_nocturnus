@@ -1,20 +1,41 @@
 
 var VIEWS = {
   bed: {
-    paths: {
-      hallway: [725, 246]
-    }
+    paths: { hallway_forward: [725, 246] },
   },
 
-  hallway: {
+  hallway_forward: {
     paths: {
-      bed: [963, 466]
-    }
+      bed: [963, 466],
+      livingroom_forward: [640, 527],
+    },
+  },
+
+  livingroom_forward: {
+    paths: {
+      balcony: [1126.5, 422],
+    },
+  },
+
+  balcony: {
+    paths: {
+      livingroom_backward: [102.5, 668],
+    },
+  },
+
+  livingroom_backward: {
+    paths: {
+      hallway_backward: [961.5, 200],
+    },
+  },
+
+  hallway_backward: {
+    paths: {}
   }
 }
 
 var state = {
-  view_key: 'hallway',
+  view_key: 'bed',
   view_group: null,
 }
 
@@ -42,9 +63,13 @@ function make_view_group(view_key) {
   group.add(view_sprite);
 
   v = VIEWS[state.view_key];
+  if(!v){
+    console.log("No view with key: " + state.view_key)
+  }
+
   _.each(v.paths, function(coord, adj_vk){
     var circle = game.add.graphics(coord[0], coord[1]);
-    circle.beginFill(0x00ff00, 0.3);
+    circle.beginFill(0x00ff00, 0.2);
     circle.drawCircle(0, 0, 80);
     circle.endFill();
     circle.inputEnabled = true;
