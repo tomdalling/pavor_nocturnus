@@ -30,12 +30,32 @@ var ITEMS = {
     }
   },
 
+  photo: {
+    has_view_image: false,
+    action: {
+      do_choose: function(){ return state.grunge_level; },
+      normal: { do_dialog: 'photo_normal' },
+      grunge_01: { do_dialog: 'photo_grunge01' },
+      grunge_02: { do_dialog: 'photo_grunge02' },
+    },
+  },
+
   door: {
     action: {
       do_choose: function(){ return player_has('key') ? 'unlocked' : 'locked'; },
       locked: { do_dialog: 'door_locked' },
       unlocked: { do_view: 'corridor' },
     }
+  },
+
+  norofon: {
+    has_view_image: false,
+    action: {
+      do_choose: function(){ return state.grunge_level; },
+      normal: { do_dialog: 'norofon_normal' },
+      grunge_01: { do_dialog: 'norofon_grunge01' },
+      grunge_02: { do_dialog: 'norofon_grunge02' },
+    },
   },
 }
 
@@ -48,12 +68,17 @@ var DIALOGS = {
     text: 'What is Dix? This is foreign to me.',
     image: true,
   },
-  computer_original: {
-    text: 'Is that hacker news?',
-  },
-  door_locked: {
-    text: 'The door is locked',
-  }
+  computer_original: { text: 'Is that hacker news?' },
+  door_locked: { text: 'The door is locked.' },
+  enter_test: { text: 'This is a test. Beep boop beep.' },
+
+  photo_normal: { image: true, text: 'My two girls. They must have gone for a walk without me.' },
+  photo_grunge01: { image: true, text: '...' },
+  photo_grunge02: { image: true, text: '...' },
+
+  norofon_normal: { image: true, text: 'My two girls. They must have gone for a walk without me.' },
+  norofon_grunge01: { image: true, text: '...' },
+  norofon_grunge02: { image: true, text: '...' },
 }
 
 var VIEWS = {
@@ -84,13 +109,13 @@ var VIEWS = {
     },
     items: {
       computer: [597, 289],
+      photo: [123, 166],
     },
   },
 
   balcony: {
-    paths: {
-      livingroom_backward: [102.5, 668],
-    },
+    paths: { livingroom_backward: [102.5, 668] },
+    enter_action: { do_dialog: 'enter_test' },
   },
 
   livingroom_backward: {
@@ -124,14 +149,13 @@ var VIEWS = {
   },
 
   bathroom: {
-    paths: {
-      hallway_forward: [1220, 494],
-    },
+    paths: { hallway_forward: [1220, 494] },
+    items: { norofon: [1130, 342] },
   }
 }
 
 var state = {
-  view_key: 'livingroom_forward',
+  view_key: 'bathroom',
   inventory: [],
   grunge_level: GRUNGE_LEVELS[0],
 
@@ -260,6 +284,15 @@ function move_to_view(view_key) {
   state.last_click = null;
   state.view_key = view_key;
   state.view_group = make_view_group(view_key, state.grunge_level);
+
+  view = VIEWS[view_key];
+  if(view.enter_action){
+    action = view.enter_action;
+    view.enter_action = null; // only do it once
+    game.time.events.add(Phaser.Timer.SECOND * 1, function(){
+      perform_action(action);
+    });
+  }
 }
 
 function perform_action(action, item, sprite) {
