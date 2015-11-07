@@ -2,27 +2,41 @@ var GAME_WIDTH = 1280;
 var GAME_HEIGHT = 720;
 var DEBUG = true;
 var GRUNGE_LEVELS = [
+  'normal',
   'grunge_01',
 ]
 
 var ITEMS = {
   computer: {
     has_view_image: false,
-    do_dialog: 'computer',
+    action: {
+      do_choose: function(){ return state.grunge_level },
+      normal: {
+        do_dialog: 'computer',
+        do_grunge_level: 'grunge_01',
+      },
+      grunge_01: {
+        do_dialog: 'computer_original',
+      }
+    }
   },
 
   key: {
     has_view_image: true,
-    do_give: 'key',
-    do_destroy: true,
-    do_dialog: 'key',
+    action: {
+      do_give: 'key',
+      do_destroy: true,
+      do_dialog: 'key',
+    }
   },
 
   door: {
-    do_choose: function(){ return player_has('key') ? 'unlocked' : 'locked'; },
-    locked: { do_dialog: 'door_locked' },
-    unlocked: { do_view: 'corridor' },
-  }
+    action: {
+      do_choose: function(){ return player_has('key') ? 'unlocked' : 'locked'; },
+      locked: { do_dialog: 'door_locked' },
+      unlocked: { do_view: 'corridor' },
+    }
+  },
 }
 
 var DIALOGS = {
@@ -33,6 +47,9 @@ var DIALOGS = {
   computer: {
     text: 'What is Dix? This is foreign to me.',
     image: true,
+  },
+  computer_original: {
+    text: 'Is that hacker news?',
   },
   door_locked: {
     text: 'The door is locked',
@@ -103,7 +120,7 @@ var VIEWS = {
   },
 
   corridor: {
-    paths: { hallway_backward_entrance: [667.5, 703] },
+    paths: { hallway_backward_entrance: [667, 680] },
   },
 
   bathroom: {
@@ -114,7 +131,7 @@ var VIEWS = {
 }
 
 var state = {
-  view_key: 'livingroom_backward',
+  view_key: 'livingroom_forward',
   inventory: [],
   grunge_level: GRUNGE_LEVELS[0],
 
@@ -153,7 +170,8 @@ function preload() {
 }
 
 function create() {
-    state.view_group = make_view_group(state.view_key);
+    state.view_group = make_view_group(state.view_key, state.grunge_level);
+    game.add.tween(state.view_group).from({alpha: 0}, 2000, 'Linear', true);
 }
 
 function render() {
@@ -170,17 +188,17 @@ function player_has(thing) {
   return _.contains(state.inventory, thing);
 }
 
-function make_view_group(view_key) {
+function make_view_group(view_key, grunge_level) {
   group = game.add.group()
 
-  view_sprite = game.add.sprite(0, 0, 'views/'+state.grunge_level+'/'+state.view_key);
+  view_sprite = game.add.sprite(0, 0, 'views/'+grunge_level+'/'+view_key);
   view_sprite.inputEnabled = true
   view_sprite.events.onInputDown.add(view_sprite_clicked);
   group.add(view_sprite);
 
-  v = VIEWS[state.view_key];
+  v = VIEWS[view_key];
   if(!v){
-    console.log("No view with key: " + state.view_key)
+    console.log("No view with key: " + view_key)
   }
 
   _.each(v.paths, function(coord, adj_vk){
@@ -218,7 +236,8 @@ function make_item_sprite(coord, item_key){
     circle.endFill();
     circle.inputEnabled = true;
     circle.events.onInputDown.add(function(){
-      activate_item(get_item(item_key), group)
+      item = get_item(item_key);
+      perform_action(item.action, item, group);
     });
 
     if(item.has_view_image){
@@ -240,38 +259,52 @@ function move_to_view(view_key) {
   state.view_group.destroy();
   state.last_click = null;
   state.view_key = view_key;
-  state.view_group = make_view_group(view_key);
+  state.view_group = make_view_group(view_key, state.grunge_level);
 }
 
-function activate_item(item, sprite) {
-  if(item.do_give){
-    state.inventory.push(item.do_give);
+function perform_action(action, item, sprite) {
+  if(action.do_give){
+    state.inventory.push(action.do_give);
   }
 
-  if(item.do_destroy){
+  if(action.do_destroy){
     item.destroyed = true;
     sprite.destroy();
   }
 
-  if(item.do_choose){
-    subitem_key = item.do_choose();
-    activate_item(item[subitem_key], sprite);
+  if(action.do_choose){
+    subaction_key = action.do_choose();
+    perform_action(action[subaction_key], item, sprite);
   }
 
-  if(item.do_dialog){
-    show_item_dialog(item.do_dialog, sprite);
+  if(action.do_grunge_level){
+    transition_to_grunge_level(action.do_grunge_level)
   }
 
-  if(item.do_grunge_level){
-    state.grunge_level = item.do_grunge_level;
+  if(action.do_dialog){
+    show_dialog(action.do_dialog, sprite);
   }
 
-  if(item.do_view){
-    move_to_view(item.do_view);
+  if(action.do_view){
+    move_to_view(action.do_view);
   }
 }
 
-function show_item_dialog(dialog_key, sprite) {
+function transition_to_grunge_level(new_grunge_level) {
+  var old_view = state.view_group;
+
+  state.grunge_level = new_grunge_level;
+  state.view_group = make_view_group(state.view_key, state.grunge_level);
+  state.view_group.filters = old_view.filters;
+  game.world.sendToBack(state.view_group);
+
+  tween = game.add.tween(old_view).to({alpha: 0}, 3000, "Linear", true);
+  tween.onComplete.add(function(){
+    old_view.destroy();
+  });
+}
+
+function show_dialog(dialog_key, sprite) {
   group = game.add.group();
   dialog = DIALOGS[dialog_key];
   if(!dialog){
@@ -283,20 +316,19 @@ function show_item_dialog(dialog_key, sprite) {
   _.each(blurs, function(b){ b.blur = 0; });
   state.view_group.filters = blurs;
   _.each(blurs, function(b){
-    game.add.tween(b).to({blur: 30}, 1000, "Linear", true);
+    game.add.tween(b).to({blur: 30}, 700, "Linear", true);
   });
 
 
   // darken background
   bg = game.add.graphics(0, 0);
   group.add(bg);
-  bg.beginFill(0x000000, 0.8);
+  bg.beginFill(0x000000, 0.7);
   bg.drawRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
   bg.endFill();
   bg.inputEnabled = true;
-  bg.item_group = group;
-  bg.events.onInputDown.add(function(){ dismiss_item_dialog(blurs, group) });
-  game.add.tween(bg).from({ alpha: 0 }, 1000, "Linear", true);
+  bg.events.onInputDown.add(function(){ dismiss_dialog(blurs, group) });
+  game.add.tween(bg).from({ alpha: 0 }, 700, "Linear", true);
 
   // show image (if available)
   if(dialog.image){
@@ -304,7 +336,7 @@ function show_item_dialog(dialog_key, sprite) {
     image = game.add.sprite(GAME_WIDTH/2, image_h_space/2, 'dialogs/' + dialog_key);
     group.add(image);
     image.anchor.setTo(0.5, 0.5)
-    game.add.tween(image).from({ y: sprite.y, x: sprite.x, alpha: 0 }, 1000, "Linear", true);
+    game.add.tween(image).from({ y: sprite.y, x: sprite.x, alpha: 0 }, 700, "Linear", true);
     game.add.tween(image.scale).from({ y: 0.2, x: 0.2 }, 1000, "Linear", true);
   }
 
@@ -319,11 +351,7 @@ function show_item_dialog(dialog_key, sprite) {
 
 }
 
-function view_sprite_clicked(sprite, point) {
-  state.last_click = [point.x, point.y];
-}
-
-function dismiss_item_dialog(blurs, group) {
+function dismiss_dialog(blurs, group) {
   _.each(blurs, function(b){
     game.add.tween(b).to({blur: 0}, 300, "Linear", true);
   });
@@ -334,3 +362,8 @@ function dismiss_item_dialog(blurs, group) {
     state.view_group.filters = null;
   })
 }
+
+function view_sprite_clicked(sprite, point) {
+  state.last_click = [point.x, point.y];
+}
+
