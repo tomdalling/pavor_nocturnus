@@ -164,16 +164,9 @@ var state = {
   preload_sprite: null,
 }
 
-var game = new Phaser.Game(1280, 720, Phaser.AUTO, 'pavor-nocturnus', {
-  preload: preload,
-  create: create,
-  render: render,
-});
-
 function preload() {
-  game.load.image('loading', 'assets/loading.jpg');
   state.preload_sprite = game.add.sprite(0, 0, 'loading');
-  game.load.setPreloadSprite(state.preload_sprite);
+  game.load.setPreloadSprite(state.preload_sprite, 1);
 
   _.each(_.keys(VIEWS), function(view_key){
     _.each(GRUNGE_LEVELS, function(grunge_level){
@@ -408,3 +401,18 @@ function view_sprite_clicked(sprite, point) {
   state.last_click = [point.x, point.y];
 }
 
+var game = new Phaser.Game(1280, 720, Phaser.AUTO, 'pavor-nocturnus')
+game.state.add('boot', {
+  preload: function() {
+    game.load.image('loading', 'assets/loading.jpg');
+  },
+  create: function() {
+    game.state.start('game');
+  }
+});
+game.state.add('game', {
+  preload: preload,
+  create: create,
+  render: render,
+});
+game.state.start('boot');
