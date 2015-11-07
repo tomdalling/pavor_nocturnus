@@ -4,6 +4,7 @@ var DEBUG = true;
 var GRUNGE_LEVELS = [
   'normal',
   'grunge_01',
+  'grunge_02',
 ]
 
 var ITEMS = {
@@ -53,7 +54,7 @@ var ITEMS = {
     action: {
       do_choose: function(){ return state.grunge_level; },
       normal: { do_dialog: 'norofon_normal' },
-      grunge_01: { do_dialog: 'norofon_grunge01' },
+      grunge_01: { do_dialog: 'norofon_grunge01', do_grunge_level: 'grunge_02' },
       grunge_02: { do_dialog: 'norofon_grunge02' },
     },
   },
