@@ -83,13 +83,12 @@ var DIALOGS = {
 
 var VIEWS = {
   bed_forward: {
-    paths: { hallway_forward: [617, 250] },
+    paths: { bed_backward: [890, 670] },
   },
 
   bed_backward: {
     paths: {
       hallway_forward: [132.5, 663],
-      bed_forward: [636.5, 397],
     },
   },
 
@@ -120,7 +119,7 @@ var VIEWS = {
 
   livingroom_backward: {
     paths: {
-      hallway_backward_entrance: [979, 106],
+      hallway_backward_couch: [979, 106],
     },
     items: {
       key: [610, 447],
@@ -155,7 +154,7 @@ var VIEWS = {
 }
 
 var state = {
-  view_key: 'bathroom',
+  view_key: 'bed_forward',
   inventory: [],
   grunge_level: GRUNGE_LEVELS[0],
 
