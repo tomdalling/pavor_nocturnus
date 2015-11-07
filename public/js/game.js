@@ -187,25 +187,40 @@ function make_view_group(view_key) {
   })
 
   _.each(v.items, function(coord, item_key){
-    item = ITEMS[item_key];
-    if(!item.destroyed){
-      var circle = game.add.graphics(coord[0], coord[1]);
-      circle.beginFill(0xFF0000, 0.3);
-      circle.drawCircle(0, 0, 80);
-      circle.endFill();
-      circle.inputEnabled = true;
-      circle.events.onInputDown.add(function(){ activate_item(get_item(item_key), circle) })
-      group.add(circle);
-
-      if(item.has_view_image){
-        var img = game.add.sprite(coord[0], coord[1], 'items/'+item_key);
-        img.anchor.setTo(0.5, 0.5);
-        group.add(img);
-      }
-    }
+    var sprite = make_item_sprite(coord, item_key);
+    if(sprite)
+      group.add(sprite);
   })
 
   return group;
+}
+
+function make_item_sprite(coord, item_key){
+    var item = ITEMS[item_key];
+    if(item.destroyed)
+      return null;
+
+    var group = game.add.group();
+    group.x = coord[0];
+    group.y = coord[1];
+
+    var circle = game.add.graphics(0, 0);
+    group.add(circle);
+    circle.beginFill(0xFF0000, 0.3);
+    circle.drawCircle(0, 0, 80);
+    circle.endFill();
+    circle.inputEnabled = true;
+    circle.events.onInputDown.add(function(){
+      activate_item(get_item(item_key), group)
+    });
+
+    if(item.has_view_image){
+      var img = game.add.sprite(0, 0, 'items/'+item_key);
+      group.add(img);
+      img.anchor.setTo(0.5, 0.5);
+    }
+
+    return group;
 }
 
 function get_item(key){
