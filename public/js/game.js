@@ -15,13 +15,14 @@ var VIEWS = {
     paths: {
       bed_backward: [963, 466],
       livingroom_forward: [640, 527],
-      hallway_backward: [392.5, 702],
+      hallway_backward_entrance: [392.5, 702],
     },
   },
 
   livingroom_forward: {
     paths: {
       balcony: [1126.5, 422],
+      hallway_backward_couch: [101.5, 690],
     },
   },
 
@@ -33,11 +34,11 @@ var VIEWS = {
 
   livingroom_backward: {
     paths: {
-      hallway_backward: [961.5, 200],
+      hallway_backward_entrance: [961.5, 200],
     },
   },
 
-  hallway_backward: {
+  hallway_backward_entrance: {
     paths: {
       corridor: [694.5, 355],
       hallway_forward: [1107.5, 695],
@@ -45,13 +46,20 @@ var VIEWS = {
     },
   },
 
+  hallway_backward_couch: {
+    paths: {
+      hallway_backward_entrance: [735.5, 491],
+      livingroom_forward: [433.5, 714],
+    }
+  },
+
   corridor: {
-    paths: { hallway_backward: [667.5, 703] },
+    paths: { hallway_backward_entrance: [667.5, 703] },
   },
 
   bathroom: {
     paths: {
-      hallway_backward: [1257.5, 494],
+      hallway_backward_entrance: [1257.5, 494],
     },
   }
 }
