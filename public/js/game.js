@@ -1,12 +1,16 @@
 
 var VIEWS = {
-  bed: {
+  bed_forward: {
     paths: { hallway_forward: [725, 246] },
+  },
+
+  bed_backward: {
+    paths: { hallway_forward: [132.5, 663] },
   },
 
   hallway_forward: {
     paths: {
-      bed: [963, 466],
+      bed_backward: [963, 466],
       livingroom_forward: [640, 527],
       hallway_backward: [392.5, 702],
     },
@@ -50,7 +54,7 @@ var VIEWS = {
 }
 
 var state = {
-  view_key: 'bed',
+  view_key: 'bed_forward',
   view_group: null,
 }
 
