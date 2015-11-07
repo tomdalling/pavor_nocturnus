@@ -148,9 +148,9 @@ function path_clicked(circle) {
 }
 
 function item_clicked(circle) {
-  var blurX = game.add.filter('BlurX');
-  var blurY = game.add.filter('BlurY');
-  state.view_group.filters = [blurX, blurY];
+  blurs = [game.add.filter('BlurX'), game.add.filter('BlurY')];
+  _.each(blurs, function(b){ b.blur = 0; });
+  state.view_group.filters = blurs;
 
   item = ITEMS[circle.item_key];
   if(!item){
@@ -161,13 +161,13 @@ function item_clicked(circle) {
 
   bg = game.add.graphics(0, 0);
   group.add(bg);
-  bg.beginFill(0x000000, 0.6);
+  bg.beginFill(0x000000, 0.8);
   bg.drawRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
   bg.endFill();
 
   bg.inputEnabled = true;
   bg.item_group = group;
-  bg.events.onInputDown.add(dismiss_item_dialog);
+  bg.events.onInputDown.add(dismiss_item_dialog, { blurs: blurs, group: group });
 
   image = game.add.sprite(GAME_WIDTH/2, GAME_HEIGHT * 0.4, 'items/' + circle.item_key);
   group.add(image);
@@ -183,18 +183,23 @@ function item_clicked(circle) {
   game.add.tween(bg).from({ alpha: 0 }, 1000, "Linear", true);
   game.add.tween(image).from({ y: circle.y, x: circle.x, alpha: 0 }, 1000, "Linear", true);
   game.add.tween(image.scale).from({ y: 0.2, x: 0.2 }, 1000, "Linear", true);
+  _.each(blurs, function(b){
+    game.add.tween(b).to({blur: 30}, 1000, "Linear", true);
+  });
 }
 
 function view_sprite_clicked(sprite, point) {
   console.log('You clicked at [' + point.x + ', ' + point.y + ']')
 }
 
-function dismiss_item_dialog(bg) {
-  state.view_group.filters = null;
+function dismiss_item_dialog() {
+  _.each(this.blurs, function(b){
+    game.add.tween(b).to({blur: 0}, 300, "Linear", true);
+  });
 
-  group = bg.item_group;
-  tween = game.add.tween(group).to({alpha: 0}, 300, "Linear", true);
+  tween = game.add.tween(this.group).to({alpha: 0}, 300, "Linear", true);
   tween.onComplete.add(function(){
     group.destroy();
+    state.view_group.filters = null;
   })
 }
