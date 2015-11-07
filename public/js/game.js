@@ -1,3 +1,11 @@
+var GAME_WIDTH = 1280;
+var GAME_HEIGHT = 720;
+
+var ITEMS = {
+  computer: {
+    text: 'What is Dix? This is foreign to me.'
+  }
+}
 
 var VIEWS = {
   bed_forward: {
@@ -23,6 +31,9 @@ var VIEWS = {
     paths: {
       balcony: [1126.5, 422],
       hallway_backward_couch: [101.5, 690],
+    },
+    items: {
+      computer: [595.5, 215],
     },
   },
 
@@ -65,7 +76,7 @@ var VIEWS = {
 }
 
 var state = {
-  view_key: 'bed_forward',
+  view_key: 'livingroom_forward',
   view_group: null,
 }
 
@@ -77,6 +88,10 @@ var game = new Phaser.Game(1280, 720, Phaser.AUTO, 'pavor-nocturnus', {
 function preload() {
   _.each(_.keys(VIEWS), function(view_key){
     game.load.image('views/' + view_key, 'assets/views/'+view_key+'.jpg');
+  })
+
+  _.each(_.keys(ITEMS), function(item_key){
+    game.load.image('items/' + item_key, 'assets/items/'+item_key+'.png');
   })
 }
 
@@ -108,6 +123,17 @@ function make_view_group(view_key) {
     group.add(circle);
   })
 
+  _.each(v.items, function(coord, item_key){
+    var circle = game.add.graphics(coord[0], coord[1]);
+    circle.beginFill(0xFF0000, 0.3);
+    circle.drawCircle(0, 0, 80);
+    circle.endFill();
+    circle.inputEnabled = true;
+    circle.events.onInputDown.add(item_clicked);
+    circle.item_key = item_key;
+    group.add(circle);
+  })
+
   return group;
 }
 
@@ -117,6 +143,40 @@ function path_clicked(circle) {
   state.view_group = make_view_group(state.view_key)
 }
 
+function item_clicked(circle) {
+  item = ITEMS[circle.item_key];
+  if(!item){
+    console.log("No item found with key: " + item);
+  }
+
+  group = game.add.group();
+
+  bg = game.add.graphics(0, 0);
+  group.add(bg);
+  bg.beginFill(0x000000, 0.8);
+  bg.drawRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+  bg.endFill();
+
+  bg.inputEnabled = true;
+  bg.item_group = group;
+  bg.events.onInputDown.add(dismiss_item_dialog);
+
+  image = game.add.sprite(GAME_WIDTH/2, GAME_HEIGHT * 0.4, 'items/' + circle.item_key);
+  group.add(image);
+  image.anchor.setTo(0.5, 0.5)
+
+  if(item.text){
+    text_style = { fill: "#fff", boundsAlignH: "center", boundsAlignV: "middle" };
+    text = game.add.text(0, 0, item.text, text_style);
+    group.add(text);
+    text.setTextBounds(0, GAME_HEIGHT - 300, GAME_WIDTH, 300);
+  }
+}
+
 function view_sprite_clicked(sprite, point) {
   console.log('You clicked at [' + point.x + ', ' + point.y + ']')
+}
+
+function dismiss_item_dialog(bg) {
+  bg.item_group.destroy();
 }
