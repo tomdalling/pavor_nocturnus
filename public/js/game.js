@@ -1,6 +1,9 @@
 var GAME_WIDTH = 1280;
 var GAME_HEIGHT = 720;
 var DEBUG = true;
+var GRUNGE_LEVELS = [
+  'grunge_01',
+]
 
 var ITEMS = {
   computer: {
@@ -38,7 +41,7 @@ var DIALOGS = {
 
 var VIEWS = {
   bed_forward: {
-    paths: { hallway_forward: [725, 246] },
+    paths: { hallway_forward: [617, 250] },
   },
 
   bed_backward: {
@@ -50,19 +53,20 @@ var VIEWS = {
 
   hallway_forward: {
     paths: {
-      bed_backward: [963, 466],
-      livingroom_forward: [640, 527],
-      hallway_backward_entrance: [392.5, 702],
+      bed_backward: [380, 313],
+      bathroom: [1160, 580],
+      livingroom_forward: [143, 472],
+      hallway_backward_entrance: [672, 680],
     },
   },
 
   livingroom_forward: {
     paths: {
-      balcony: [1126.5, 422],
-      hallway_backward_couch: [101.5, 690],
+      balcony: [1225, 260],
+      hallway_backward_couch: [641, 678],
     },
     items: {
-      computer: [595.5, 215],
+      computer: [597, 289],
     },
   },
 
@@ -74,17 +78,17 @@ var VIEWS = {
 
   livingroom_backward: {
     paths: {
-      hallway_backward_entrance: [961.5, 200],
+      hallway_backward_entrance: [979, 106],
     },
     items: {
-      key: [618.5, 508],
+      key: [610, 447],
     }
   },
 
   hallway_backward_entrance: {
     paths: {
-      hallway_forward: [1107.5, 695],
-      bathroom: [264.5, 392],
+      hallway_forward: [658, 670],
+      bathroom: [268, 343],
     },
     items: {
       door: [694.5, 355],
@@ -93,8 +97,8 @@ var VIEWS = {
 
   hallway_backward_couch: {
     paths: {
-      hallway_backward_entrance: [735.5, 491],
-      livingroom_forward: [433.5, 714],
+      hallway_backward_entrance: [735, 571],
+      livingroom_forward: [50, 340],
     }
   },
 
@@ -104,7 +108,7 @@ var VIEWS = {
 
   bathroom: {
     paths: {
-      hallway_backward_entrance: [1257.5, 494],
+      hallway_forward: [1220, 494],
     },
   }
 }
@@ -112,6 +116,7 @@ var VIEWS = {
 var state = {
   view_key: 'livingroom_backward',
   inventory: [],
+  grunge_level: GRUNGE_LEVELS[0],
 
   view_group: null,
   last_click: null,
@@ -125,7 +130,9 @@ var game = new Phaser.Game(1280, 720, Phaser.AUTO, 'pavor-nocturnus', {
 
 function preload() {
   _.each(_.keys(VIEWS), function(view_key){
-    game.load.image('views/' + view_key, 'assets/views/'+view_key+'.jpg');
+    _.each(GRUNGE_LEVELS, function(grunge_level){
+      game.load.image('views/'+grunge_level+'/'+view_key, 'assets/views/'+grunge_level+'/'+view_key+'.jpg');
+    });
   });
 
   _.each(ITEMS, function(item, item_key){
@@ -166,7 +173,7 @@ function player_has(thing) {
 function make_view_group(view_key) {
   group = game.add.group()
 
-  view_sprite = game.add.sprite(0, 0, 'views/' + state.view_key);
+  view_sprite = game.add.sprite(0, 0, 'views/'+state.grunge_level+'/'+state.view_key);
   view_sprite.inputEnabled = true
   view_sprite.events.onInputDown.add(view_sprite_clicked);
   group.add(view_sprite);
@@ -243,7 +250,6 @@ function activate_item(item, sprite) {
 
   if(item.do_destroy){
     item.destroyed = true;
-    //TODO: removes circle, but not the actual sprite
     sprite.destroy();
   }
 
@@ -254,6 +260,10 @@ function activate_item(item, sprite) {
 
   if(item.do_dialog){
     show_item_dialog(item.do_dialog, sprite);
+  }
+
+  if(item.do_grunge_level){
+    state.grunge_level = item.do_grunge_level;
   }
 
   if(item.do_view){
