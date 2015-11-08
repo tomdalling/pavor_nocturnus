@@ -1,10 +1,16 @@
 var DEBUG = (window.location.search == "?debug");
-var DEBUG_STARTING_GRUNGE_LEVEL = 'grunge_02';
-var DEBUG_STARTING_VIEW_KEY = 'balcony';
+var DEBUG_STARTING_GRUNGE_LEVEL = 'normal';
+var DEBUG_STARTING_VIEW_KEY = 'livingroom_forward';
 
 var GAME_WIDTH = 1280;
 var GAME_HEIGHT = 720;
 var GRUNGE_LEVELS = ['normal', 'grunge_01', 'grunge_02']
+
+var AUDIO = {
+  grunge_level_normal: { volume: 0.15, },
+  grunge_level_grunge_01: { volume: 0.3, },
+  grunge_level_grunge_02: { volume: 0.5, },
+};
 
 var ITEMS = {
   computer: {
@@ -168,6 +174,7 @@ var state = {
   view_group: null,
   last_click: null,
   preload_sprite: null,
+  grunge_level_audio: null,
 }
 
 function preload() {
@@ -192,6 +199,10 @@ function preload() {
     }
   })
 
+  _.each(AUDIO, function(options, key){
+    game.load.audio(key, 'assets/audio/'+key+'.ogg');
+  });
+
   game.load.image('monster_close', 'assets/monster_close.png');
 
   //TODO: download these js files and serve them locally (in case they change)
@@ -209,16 +220,6 @@ function create() {
   }
 }
 
-function start_game() {
-  state.preload_sprite.destroy();
-  state.preload_sprite = null;
-
-  state.view_group = make_view_group(state.view_key, state.grunge_level);
-  if(!DEBUG){
-    game.add.tween(state.view_group).from({alpha: 0}, 2000, 'Linear', true);
-  }
-}
-
 function render() {
   if(DEBUG){
     game.debug.text(state.view_key, 10, 20, 'red');
@@ -227,6 +228,35 @@ function render() {
       game.debug.text("Last clicked at: [" + state.last_click[0] + ", " + state.last_click[1] + "]", 10, 60, 'red');
     }
   }
+}
+
+function start_game() {
+  state.preload_sprite.destroy();
+  state.preload_sprite = null;
+
+  play_grunge_level_audio(state.grunge_level);
+
+  state.view_group = make_view_group(state.view_key, state.grunge_level);
+  if(!DEBUG){
+    game.add.tween(state.view_group).from({alpha: 0}, 2000, 'Linear', true);
+  }
+}
+
+function play_grunge_level_audio(level) {
+  if(state.grunge_level_audio){
+    var old = state.grunge_level_audio;
+    old.fadeOut(3000);
+    old.onFadeComplete.add(function(){ old.stop(); });
+  }
+
+  key = 'grunge_level_' + level
+  bg_audio = game.add.audio(key);
+  bg_audio.onDecoded.add(function(){
+    bg_audio.loopFull(0);
+    bg_audio.fadeTo(3000, AUDIO[key].volume || 1);
+  });
+
+  state.grunge_level_audio = bg_audio;
 }
 
 function player_has(thing) {
@@ -370,6 +400,8 @@ function transition_to_grunge_level(new_grunge_level) {
   state.view_group = make_view_group(state.view_key, state.grunge_level);
   state.view_group.filters = old_view.filters;
   game.world.sendToBack(state.view_group);
+
+  play_grunge_level_audio(new_grunge_level);
 
   tween = game.add.tween(old_view).to({alpha: 0}, 3000, "Linear", true);
   tween.onComplete.add(function(){
