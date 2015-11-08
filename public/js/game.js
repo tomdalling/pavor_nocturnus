@@ -778,10 +778,15 @@ function view_sprite_clicked(sprite, point) {
 var game = new Phaser.Game(1280, 720, Phaser.AUTO, 'pavor-nocturnus')
 game.state.add('boot', {
   preload: function() {
+    game.scale.maxWidth = 1280;
+    game.scale.maxHeight = 720;
+    game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
+
     game.load.image('loading', 'assets/loading.jpg');
   },
   create: function() {
     game.state.start('game');
+    window.scrollTo(0, 1); //gets rid of the android address bar
   }
 });
 game.state.add('game', {
