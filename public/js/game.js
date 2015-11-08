@@ -1,6 +1,6 @@
 var DEBUG = (window.location.search == "?debug");
-var DEBUG_STARTING_GRUNGE_LEVEL = 'normal';
-var DEBUG_STARTING_VIEW_KEY = 'livingroom_forward';
+var DEBUG_STARTING_GRUNGE_LEVEL = 'grunge_02';
+var DEBUG_STARTING_VIEW_KEY = 'corridor';
 
 var GAME_WIDTH = 1280;
 var GAME_HEIGHT = 720;
@@ -8,7 +8,7 @@ var GRUNGE_LEVELS = ['normal', 'grunge_01', 'grunge_02']
 
 var AUDIO = {
   grunge_level_normal: { volume: 0.15, },
-  grunge_level_grunge_01: { volume: 0.3, },
+  grunge_level_grunge_01: { volume: 0.25, },
   grunge_level_grunge_02: { volume: 0.5, },
 };
 
@@ -17,32 +17,23 @@ var ITEMS = {
     has_view_image: false,
     action: {
       do_choose: function(){ return state.grunge_level },
-      normal: {
-        do_dialog: 'computer',
-        do_grunge_level: 'grunge_01',
-      },
-      grunge_01: {
-        do_dialog: 'computer_original',
-      }
+      normal:    { do_dialog: 'computer', do_grunge_level: 'grunge_01' },
+      grunge_01: { do_dialog: 'computer_original', do_grunge_level: 'grunge_02' },
     }
   },
 
   key: {
     has_view_image: true,
-    action: {
-      do_give: 'key',
-      do_destroy: true,
-      do_dialog: 'key',
-    }
+    action: { do_dialog: 'key', do_give: 'key', do_destroy: true },
   },
 
   photo: {
     has_view_image: false,
     action: {
       do_choose: function(){ return state.grunge_level; },
-      normal: { do_dialog: 'photo_normal' },
-      grunge_01: { do_dialog: 'photo_grunge01' },
-      grunge_02: { do_dialog: 'photo_grunge02' },
+      normal:    { do_dialog: 'photo_normal' },
+      grunge_01: { do_dialog: 'photo_grunge_01' },
+      grunge_02: { do_dialog: 'photo_grunge_02' },
     },
   },
 
@@ -52,16 +43,6 @@ var ITEMS = {
       locked: { do_dialog: 'door_locked' },
       unlocked: { do_view: 'corridor' },
     }
-  },
-
-  norofon: {
-    has_view_image: false,
-    action: {
-      do_choose: function(){ return state.grunge_level; },
-      normal: { do_dialog: 'norofon_normal' },
-      grunge_01: { do_dialog: 'norofon_grunge01', do_grunge_level: 'grunge_02' },
-      grunge_02: { do_dialog: 'norofon_grunge02' },
-    },
   },
 
   monster: {
@@ -82,26 +63,34 @@ var DIALOGS = {
   },
   computer_original: { text: 'Is that hacker news?' },
   door_locked: { text: 'The door is locked.' },
-  enter_test: { text: 'This is a test. Beep boop beep.' },
 
-  photo_normal: { image: true, text: 'My two girls. They must have gone for a walk without me.' },
-  photo_grunge01: { image: true, text: '...' },
-  photo_grunge02: { image: true, text: '...' },
+  photo_normal: { image: true, text: 'My two girls. They must have gone for a walk.' },
+  photo_grunge_01: { image: true, text: "They didn't go for a walk, did they?" },
+  photo_grunge_02: { image: true, text: 'Sal?' },
 
-  norofon_normal: { image: true, text: 'My two girls. They must have gone for a walk without me.' },
-  norofon_grunge01: { image: true, text: '...' },
-  norofon_grunge02: { image: true, text: '...' },
+  // view enter_action dialogs
+  bed_forward_normal: { text: "It's light out. Why didn't Sal wake me?" },
+  livingroom_backward_normal: { text: "Is that Sal's hair?" },
+  hallway_backward_entrance_normal: { text: "Sounds like it's coming from outside." },
+  corridor_grunge_02: { text: "Hello?" },
+  bed_backward_grunge_02: { text: "Is that me?" },
 }
 
 var VIEWS = {
   bed_forward: {
     paths: { bed_backward: [890, 670] },
+    enter_action: {
+      do_choose: function(){ return state.grunge_level; },
+      normal: { do_dialog: 'bed_forward_normal' },
+    }
   },
 
   bed_backward: {
-    paths: {
-      hallway_forward: [132.5, 663],
-    },
+    paths: { hallway_forward: [132.5, 663] },
+    enter_action: {
+      do_choose: function(){ return state.grunge_level; },
+      grunge_02: { do_dialog: 'bed_backward_grunge_02' },
+    }
   },
 
   hallway_forward: {
@@ -126,16 +115,15 @@ var VIEWS = {
 
   balcony: {
     paths: { livingroom_backward: [102.5, 668] },
-    enter_action: { do_dialog: 'enter_test' },
     items: { monster: [720, 516] }
   },
 
   livingroom_backward: {
-    paths: {
-      hallway_backward_couch: [979, 106],
-    },
-    items: {
-      key: [610, 447],
+    paths: { hallway_backward_couch: [979, 106] },
+    items: { key: [610, 447] },
+    enter_action: {
+      do_choose: function(){ return state.grunge_level; },
+      normal: { do_dialog: 'livingroom_backward_normal' },
     }
   },
 
@@ -144,8 +132,10 @@ var VIEWS = {
       hallway_forward: [658, 670],
       bathroom: [268, 343],
     },
-    items: {
-      door: [694.5, 355],
+    items: { door: [694.5, 355] },
+    enter_action: {
+      do_choose: function(){ return state.grunge_level; },
+      normal: { do_dialog: 'hallway_backward_entrance_normal' },
     }
   },
 
@@ -158,11 +148,15 @@ var VIEWS = {
 
   corridor: {
     paths: { hallway_backward_entrance: [667, 680] },
+    enter_action: {
+      do_choose: function(){ return state.grunge_level; },
+      grunge_02: { do_dialog: 'corridor_grunge_02' },
+    }
   },
 
   bathroom: {
     paths: { hallway_forward: [1220, 494] },
-    items: { norofon: [1130, 342] },
+    items: {},
   }
 }
 
@@ -237,6 +231,7 @@ function start_game() {
   play_grunge_level_audio(state.grunge_level);
 
   state.view_group = make_view_group(state.view_key, state.grunge_level);
+  perform_view_action(state.view_key);
   if(!DEBUG){
     game.add.tween(state.view_group).from({alpha: 0}, 2000, 'Linear', true);
   }
@@ -341,7 +336,10 @@ function move_to_view(view_key) {
   state.last_click = null;
   state.view_key = view_key;
   state.view_group = make_view_group(view_key, state.grunge_level);
+  perform_view_action(view_key);
+}
 
+function perform_view_action(view_key) {
   view = VIEWS[view_key];
   if(view.enter_action){
     action = view.enter_action;
