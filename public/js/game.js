@@ -239,9 +239,9 @@ var VIEWS = {
         looping: true,
         only_in_grunge_levels: ['grunge_02'],
       },
-      wakeup: {
-        only_in_grunge_levels: ['grunge_02'],
-      },
+      //wakeup: {
+        //only_in_grunge_levels: ['grunge_02'],
+      //},
     }
   },
 
@@ -277,8 +277,8 @@ var VIEWS = {
 
   hallway_backward_couch: {
     paths: {
-      hallway_backward_entrance: [735, 571],
-      livingroom_forward: [50, 340, 90],
+      hallway_backward_entrance: [735, 571, 0],
+      livingroom_forward: [50, 340, -90],
     }
   },
 
