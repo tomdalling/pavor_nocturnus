@@ -1,6 +1,6 @@
+var DEBUG = (window.location.search == "?debug");
 var GAME_WIDTH = 1280;
 var GAME_HEIGHT = 720;
-var DEBUG = true;
 var GRUNGE_LEVELS = [
   'normal',
   'grunge_01',
