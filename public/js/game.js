@@ -1,6 +1,6 @@
 var DEBUG = (window.location.search == "?debug");
-var DEBUG_STARTING_GRUNGE_LEVEL = 'grunge_02';
-var DEBUG_STARTING_VIEW_KEY = 'livingroom_forward';
+var DEBUG_STARTING_GRUNGE_LEVEL = 'grunge_01';
+var DEBUG_STARTING_VIEW_KEY = 'livingroom_backward';
 var DEBUG_STARTING_INVENTORY = ['knife', 'key', 'cloth'];
 
 var GAME_WIDTH = 1280;
@@ -11,6 +11,9 @@ var AUDIO = {
   grunge_level_normal: { volume: 0.15, },
   grunge_level_grunge_01: { volume: 0.25, },
   grunge_level_grunge_02: { volume: 0.5, },
+  grunge_level_reality: {},
+  monster_growl: {},
+  scratching: {},
 };
 
 var ITEMS = {
@@ -21,6 +24,7 @@ var ITEMS = {
       normal:    { do_dialog: 'computer_normal' },
       grunge_01: { do_dialog: 'computer_grunge_01' },
       grunge_02: { do_dialog: 'computer_grunge_02' },
+      reality:   { do_dialog: 'computer_reality' },
     }
   },
 
@@ -68,6 +72,7 @@ var ITEMS = {
       normal:    { do_dialog: 'photo_normal' },
       grunge_01: { do_dialog: 'photo_grunge_01' },
       grunge_02: { do_dialog: 'photo_grunge_02' },
+      reality:   { do_dialog: 'photo_reality' },
     },
   },
 
@@ -78,14 +83,22 @@ var ITEMS = {
       normal:    { do_dialog: 'lotion_normal' },
       grunge_01: { do_dialog: 'lotion_grunge_01' },
       grunge_02: { do_dialog: 'lotion_grunge_02' },
+      reality:   { do_dialog: 'lotion_reality' },
     }
   },
 
   balcony_door: {
     action: {
-      do_choose: function(){ return player_has('key') ? 'unlocked' : 'locked'; },
+      do_choose: function(){
+        if(state.grunge_level == 'reality'){
+          return 'ending';
+        } else {
+          return player_has('key') ? 'unlocked' : 'locked';
+        }
+      },
       locked: { do_dialog: 'balcony_door_locked' },
       unlocked: { do_view: 'balcony' },
+      ending: { do_view: 'balcony_ending' },
     }
   },
 
@@ -130,10 +143,12 @@ var DIALOGS = {
   photo_normal:    { image: true, text: 'My two girls. They must have gone for a walk.' },
   photo_grunge_01: { image: true, text: "They didn't go for a walk, did they?" },
   photo_grunge_02: { image: true, text: 'Sal?' },
+  photo_reality:   { image: true, text: "I should have gotten rid of this ages ago." },
 
   lotion_normal:    { image: true, text: "Is that what makes her smell so damn good?" },
   lotion_grunge_01: { image: true, text: "She forgot to take that." },
   lotion_grunge_02: { image: true, text: "Stupid bitch left that here on purpose. She won't let me forget her." },
+  lotion_reality:   { text: "..." },
 
   dog_bed_normal: { text: "Peach is getting too big for that." },
   dog_bed_grunge_01: { text: "Where is that bloody dog?" },
@@ -141,6 +156,7 @@ var DIALOGS = {
   computer_normal:    { image: true, text: "They look so good together."},
   computer_grunge_01: { image: true, text: "Did I search that?"},
   computer_grunge_02: { image: true, text: "What the hell?"},
+  computer_reality:   { text: "I can't work now."},
 
   corridor_door_dirty: { text: "I'm not touching that." },
   got_cloth: { image: true, text: "I'll use this." },
@@ -177,6 +193,13 @@ var VIEWS = {
       livingroom_forward: [143, 472],
       hallway_backward_entrance: [672, 680],
     },
+    sounds: {
+      scratching: {
+        looping: true,
+        volume: 0.5,
+        only_in_grunge_levels: ['grunge_01'],
+      }
+    }
   },
 
   livingroom_forward: {
@@ -189,6 +212,13 @@ var VIEWS = {
       key: [260, 248],
       balcony_door: [1225, 260],
     },
+    sounds: {
+      monster_growl: {
+        looping: true,
+        volume: 0.4,
+        only_in_grunge_levels: ['grunge_02'],
+      }
+    }
   },
 
   balcony: {
@@ -197,6 +227,20 @@ var VIEWS = {
       balcony_outside_door: [102.5, 668],
       monster: [720, 516],
       dog_bed: [650, 668],
+    },
+    sounds: {
+      monster_growl: {
+        looping: true,
+        only_in_grunge_levels: ['grunge_02'],
+      }
+    }
+  },
+
+  balcony_ending: {
+    skip_view_loading: true,
+    paths: {},
+    enter_action: {
+      //TODO: roll credits
     }
   },
 
@@ -214,6 +258,13 @@ var VIEWS = {
     enter_action: {
       do_choose: function(){ return state.grunge_level; },
       grunge_01: { do_dialog: 'hallway_backward_entrance_grunge_01', do_once: true },
+    },
+    sounds: {
+      scratching: {
+        looping: true,
+        volume: 1.2,
+        only_in_grunge_levels: ['grunge_01'],
+      }
     }
   },
 
@@ -239,6 +290,13 @@ var VIEWS = {
       lotion: [1072, 292],
       cloth: [1185, 475],
     },
+    sounds: {
+      scratching: {
+        looping: true,
+        volume: 0.5,
+        only_in_grunge_levels: ['grunge_01'],
+      }
+    }
   }
 }
 
@@ -248,6 +306,7 @@ var state = {
   grunge_level: (DEBUG ? DEBUG_STARTING_GRUNGE_LEVEL : GRUNGE_LEVELS[0]),
 
   view_group: null,
+  view_sounds: [],
   dialog_group: null,
   last_click: null,
   preload_sprite: null,
@@ -258,10 +317,12 @@ function preload() {
   state.preload_sprite = game.add.sprite(0, 0, 'loading');
   game.load.setPreloadSprite(state.preload_sprite, 1);
 
-  _.each(_.keys(VIEWS), function(view_key){
-    _.each(GRUNGE_LEVELS, function(grunge_level){
-      game.load.image('views/'+grunge_level+'/'+view_key, 'assets/views/'+grunge_level+'/'+view_key+'.jpg');
-    });
+  _.each(VIEWS, function(view, view_key){
+    if(!view.skip_view_loading){
+      _.each(GRUNGE_LEVELS, function(grunge_level){
+        game.load.image('views/'+grunge_level+'/'+view_key, 'assets/views/'+grunge_level+'/'+view_key+'.jpg');
+      });
+    }
   });
 
   _.each(ITEMS, function(item, item_key){
@@ -281,6 +342,7 @@ function preload() {
   });
 
   game.load.image('monster_close', 'assets/monster_close.png');
+  game.load.image('views/normal/balcony_ending', 'assets/views/normal/balcony_ending.jpg');
 
   //TODO: download these js files and serve them locally (in case they change)
   game.load.script('filterX', 'https://cdn.rawgit.com/photonstorm/phaser/master/filters/BlurX.js');
@@ -314,7 +376,7 @@ function start_game() {
   play_grunge_level_audio(state.grunge_level);
 
   state.view_group = make_view_group(state.view_key, state.grunge_level);
-  perform_view_action(state.view_key);
+  after_entering_view(state.view_key);
   if(!DEBUG){
     game.add.tween(state.view_group).from({alpha: 0}, 2000, 'Linear', true);
   }
@@ -344,7 +406,8 @@ function player_has(thing) {
 function make_view_group(view_key, grunge_level) {
   group = game.add.group()
 
-  view_sprite = game.add.sprite(0, 0, 'views/'+grunge_level+'/'+view_key);
+  g = (grunge_level == 'reality' ? 'normal' : grunge_level);
+  view_sprite = game.add.sprite(0, 0, 'views/'+g+'/'+view_key);
   view_sprite.inputEnabled = true
   view_sprite.events.onInputDown.add(view_sprite_clicked);
   group.add(view_sprite);
@@ -421,14 +484,42 @@ function move_to_view(view_key) {
   state.last_click = null;
   state.view_key = view_key;
   state.view_group = make_view_group(view_key, state.grunge_level);
-  perform_view_action(view_key);
+  after_entering_view(view_key);
 }
 
-function perform_view_action(view_key) {
+function after_entering_view(view_key) {
   view = VIEWS[view_key];
+
   if(view.enter_action){
     perform_action(view.enter_action);
   }
+
+  stop_all_view_sounds();
+  if(view.sounds)
+    play_view_sounds(view.sounds, view);
+}
+
+function play_view_sounds(sounds, view){
+  _.each(sounds, function(options, sound_key){
+    if(!options.only_in_grunge_levels || _.contains(options.only_in_grunge_levels, state.grunge_level) ){
+      instance = game.add.audio(sound_key);
+      state.view_sounds.push(instance);
+
+      instance.onDecoded.add(function(){
+        instance.play(undefined, undefined, 0, (options.looping || false));
+        instance.fadeTo(500, options.volume || 1);
+      });
+    }
+  });
+}
+
+function stop_all_view_sounds() {
+  _.each(state.view_sounds, function(instance){
+    instance.fadeOut(500);
+    instance.onFadeComplete.add(function(){ instance.stop(); });
+  });
+
+  state.view_sounds = [];
 }
 
 function perform_action(action, item, sprite) {
@@ -475,11 +566,21 @@ function monster_fight_cutscene(){
     monster = game.add.sprite(GAME_WIDTH/2, GAME_HEIGHT, 'monster_close');
     state.view_group.add(monster);
     monster.anchor.setTo(0.5, 1.0);
-    game.add.tween(monster.scale).from({x: 0.6, y: 0.6}, 200, 'Bounce.easeOut', true);
+    tween = game.add.tween(monster.scale).from({x: 0.6, y: 0.6}, 200, 'Bounce.easeOut', true);
+
+    tween.onComplete.add(function(){
+      state.view_group.visible = false;
+      game.time.events.add(3000, function(){
+        move_to_view('bed_forward')
+        transition_to_grunge_level('reality');
+      });
+    });
+
   });
 }
 
-function transition_to_grunge_level(new_grunge_level) {
+function transition_to_grunge_level(new_grunge_level, animate) {
+  animate = (typeof animate == 'undefined' ? true : animate);
   var old_view = state.view_group;
 
   state.grunge_level = new_grunge_level;
@@ -489,10 +590,14 @@ function transition_to_grunge_level(new_grunge_level) {
 
   play_grunge_level_audio(new_grunge_level);
 
-  tween = game.add.tween(old_view).to({alpha: 0}, 3000, "Linear", true);
-  tween.onComplete.add(function(){
+  if(animate){
+    tween = game.add.tween(old_view).to({alpha: 0}, 3000, "Linear", true);
+    tween.onComplete.add(function(){
+      old_view.destroy();
+    });
+  } else {
     old_view.destroy();
-  });
+  }
 }
 
 function show_dialog(dialog_key, sprite) {
