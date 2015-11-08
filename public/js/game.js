@@ -363,7 +363,10 @@ function preload() {
   })
 
   _.each(AUDIO, function(options, key){
-    game.load.audio(key, 'assets/audio/'+key+'.ogg');
+    game.load.audio(key, [
+      'assets/audio/'+key+'.ogg',
+      'assets/audio/'+key+'.mp3',
+    ]);
   });
 
   game.load.image('icons/circle', 'assets/icon_circle.png');
