@@ -1,5 +1,5 @@
 var DEBUG = (window.location.search == "?debug");
-var DEBUG_STARTING_GRUNGE_LEVEL = 'grunge_02';
+var DEBUG_STARTING_GRUNGE_LEVEL = 'reality';
 var DEBUG_STARTING_VIEW_KEY = 'livingroom_forward';
 var DEBUG_STARTING_INVENTORY = ['knife', 'key', 'cloth'];
 
@@ -369,6 +369,7 @@ function preload() {
   game.load.image('icons/circle', 'assets/icon_circle.png');
   game.load.image('icons/arrow', 'assets/icon_arrow.png');
   game.load.image('monster_close', 'assets/monster_close.png');
+  game.load.image('title_screen', 'assets/title_screen.jpg');
   game.load.image('views/normal/balcony_ending', 'assets/views/normal/balcony_ending.jpg');
 
   //TODO: download these js files and serve them locally (in case they change)
@@ -627,7 +628,6 @@ function monster_fight_cutscene(){
   stop_all_view_sounds();
   stab_sound = game.add.audio('dogdeath');
   attack_sound = game.add.audio('sfx_monster_attack');
-  attack_sound.onDecoded.add(function(){ attack_sound.play(); });
 
   game.time.events.add(3000, function(){
     monster = game.add.sprite(GAME_WIDTH/2, GAME_HEIGHT, 'monster_close');
@@ -636,6 +636,7 @@ function monster_fight_cutscene(){
     tween = game.add.tween(monster.scale).from({x: 0.6, y: 0.6}, 200, 'Bounce.easeOut', true);
 
     stab_sound.play();
+    attack_sound.play();
 
     tween.onComplete.add(function(){
       state.view_group.visible = false;
@@ -651,9 +652,36 @@ function monster_fight_cutscene(){
 function dead_dog_cutscene(){
   sound = game.add.sound('ending');
   sound.onDecoded.add(function(){ sound.play() });
-  sound.onStop.add(function(){
-    state.view_group.destroy();
+  game.time.events.add(7000, function(){
+    roll_credits();
+    sound.fadeOut(5000);
   });
+}
+
+function roll_credits(){
+  state.view_group.destroy();
+  title = game.add.image(0, 0, 'title_screen');
+
+  credits = "Nick Williams (nickwill82@gmail.com)\n" +
+            "Danaë Williams\n" +
+            "Tom Dalling (@tom_dalling)";
+
+  credits_sprite = game.add.text(0, 0, credits, {
+    fill: "white",
+    boundsAlignH: "center",
+    boundsAlignV: "middle",
+  });
+  credits_sprite.setTextBounds(0, GAME_HEIGHT * 0.6, GAME_WIDTH, GAME_HEIGHT * 0.4);
+  credits_sprite.setShadow(5, 5, 'rgba(0,0,0,0.7)', 15);
+  credits_sprite.fontSize = 25;
+
+  text_sprite = game.add.text(GAME_WIDTH/2, GAME_HEIGHT*0.68,  "A spooki game by BAE Collective", {
+    fill: 'white',
+    align: 'center',
+  });
+  text_sprite.anchor.setTo(0.5, 1.0);
+  text_sprite.setShadow(5, 5, 'rgba(0,0,0,0.7)', 15);
+  text_sprite.fontSize = 20;
 }
 
 function transition_to_grunge_level(new_grunge_level, animate) {
