@@ -16,6 +16,9 @@ var AUDIO = {
   growl_inside: {},
   scratching: {},
   wakeup: {},
+  dogdeath: {},
+  ending: {},
+  sfx_monster_attack: {},
 };
 
 var ITEMS = {
@@ -621,21 +624,35 @@ function perform_action(action, item, sprite) {
 }
 
 function monster_fight_cutscene(){
+  stop_all_view_sounds();
+  stab_sound = game.add.audio('dogdeath');
+  attack_sound = game.add.audio('sfx_monster_attack');
+  attack_sound.onDecoded.add(function(){ attack_sound.play(); });
+
   game.time.events.add(3000, function(){
     monster = game.add.sprite(GAME_WIDTH/2, GAME_HEIGHT, 'monster_close');
     state.view_group.add(monster);
     monster.anchor.setTo(0.5, 1.0);
     tween = game.add.tween(monster.scale).from({x: 0.6, y: 0.6}, 200, 'Bounce.easeOut', true);
 
+    stab_sound.play();
+
     tween.onComplete.add(function(){
-      stop_all_view_sounds();
       state.view_group.visible = false;
-      game.time.events.add(3000, function(){
+      game.time.events.add(8000, function(){
         move_to_view('bed_forward')
         transition_to_grunge_level('reality');
       });
     });
 
+  });
+}
+
+function dead_dog_cutscene(){
+  sound = game.add.sound('ending');
+  sound.onDecoded.add(function(){ sound.play() });
+  sound.onStop.add(function(){
+    state.view_group.destroy();
   });
 }
 
