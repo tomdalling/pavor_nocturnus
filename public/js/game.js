@@ -13,6 +13,7 @@ var AUDIO = {
   grunge_level_grunge_02: { volume: 0.5, },
   grunge_level_reality: {},
   monster_growl: {},
+  growl_inside: {},
   scratching: {},
   wakeup: {},
 };
@@ -24,9 +25,18 @@ var ITEMS = {
       do_choose: function(){ return state.grunge_level },
       normal:    { do_dialog: 'computer_normal' },
       grunge_01: { do_dialog: 'computer_grunge_01' },
-      grunge_02: { do_dialog: 'computer_grunge_02' },
       reality:   { do_dialog: 'computer_reality' },
     }
+  },
+
+  computer_flicker: {
+    has_view_image: true,
+    animation_options: {
+      frame_size: [175, 111],
+      loop: true,
+    },
+    only_in_grunge_levels: ['grunge_02'],
+    action: { do_dialog: 'computer_grunge_02' },
   },
 
   key: {
@@ -157,8 +167,11 @@ var DIALOGS = {
 
   computer_normal:    { image: true, text: "They look so good together."},
   computer_grunge_01: { image: true, text: "Did I search that?"},
-  computer_grunge_02: { image: true, text: "What the hell?"},
   computer_reality:   { text: "I can't work now."},
+  computer_grunge_02: { image: true, text: "What the hell?", animation_options: {
+    frame_size: [600, 500],
+    loop: true,
+  }},
 
   corridor_door_dirty: { text: "I'm not touching that." },
   balcony_door_locked: { text: 'The door is locked.' },
@@ -214,6 +227,7 @@ var VIEWS = {
     },
     items: {
       computer: [597, 289],
+      computer_flicker: [597, 289],
       photo: [123, 166],
       key: [260, 248],
       balcony_door: [1225, 260],
@@ -221,7 +235,7 @@ var VIEWS = {
     sounds: {
       monster_growl: {
         looping: true,
-        volume: 0.4,
+        volume: 0.15,
         only_in_grunge_levels: ['grunge_02'],
       }
     }
@@ -235,13 +249,10 @@ var VIEWS = {
       dog_bed: [650, 668],
     },
     sounds: {
-      monster_growl: {
+      growl_inside: {
         looping: true,
         only_in_grunge_levels: ['grunge_02'],
       },
-      //wakeup: {
-        //only_in_grunge_levels: ['grunge_02'],
-      //},
     }
   },
 
@@ -334,13 +345,17 @@ function preload() {
 
   _.each(ITEMS, function(item, item_key){
     if(item.has_view_image){
-      game.load.image('items/' + item_key, 'assets/items/'+item_key+'.png');
+      key = 'items/' + item_key;
+      path = 'assets/items/'+item_key+'.png';
+      preload_sprite(key, path, item.animation_options);
     }
   });
 
-  _.each(DIALOGS, function(dialog, key){
+  _.each(DIALOGS, function(dialog, dialog_key){
     if(dialog.image){
-      game.load.image('dialogs/' + key, 'assets/dialogs/'+key+'.png');
+      key = 'dialogs/'+dialog_key;
+      path = 'assets/dialogs/'+dialog_key+'.png';
+      preload_sprite(key, path, dialog.animation_options);
     }
   })
 
@@ -356,6 +371,15 @@ function preload() {
   //TODO: download these js files and serve them locally (in case they change)
   game.load.script('filterX', 'https://cdn.rawgit.com/photonstorm/phaser/master/filters/BlurX.js');
   game.load.script('filterY', 'https://cdn.rawgit.com/photonstorm/phaser/master/filters/BlurY.js');
+}
+
+function preload_sprite(key, path, animation_options) {
+  if(animation_options){
+    size = animation_options.frame_size
+    game.load.spritesheet(key, path, size[0], size[1]);
+  } else {
+    game.load.image(key, path);
+  }
 }
 
 function create() {
@@ -460,9 +484,8 @@ function make_item_sprite(coord, item_key, grunge_level){
     group.y = coord[1];
 
     if(item.has_view_image){
-      var img = game.add.sprite(0, 0, 'items/'+item_key);
-      group.add(img);
-      img.anchor.setTo(0.5, 0.5);
+      var sprite = make_sprite('items/'+item_key, item.animation_options);
+      group.add(sprite);
     }
 
     var icon = make_icon(item.icon);
@@ -478,6 +501,21 @@ function make_item_sprite(coord, item_key, grunge_level){
     }
 
     return group;
+}
+
+function make_sprite(key, animation_options) {
+  var sprite = game.add.sprite(0, 0, key);
+  sprite.anchor.setTo(0.5, 0.5);
+
+  if(animation_options){
+    frames = animation_options.frames || null;
+    fps = animation_options.fps || 10;
+    loop = animation_options.loop || false;
+    sprite.animations.add('default', frames, fps, loop);
+    sprite.play('default');
+  }
+
+  return sprite;
 }
 
 function make_icon(options){
@@ -590,6 +628,7 @@ function monster_fight_cutscene(){
     tween = game.add.tween(monster.scale).from({x: 0.6, y: 0.6}, 200, 'Bounce.easeOut', true);
 
     tween.onComplete.add(function(){
+      stop_all_view_sounds();
       state.view_group.visible = false;
       game.time.events.add(3000, function(){
         move_to_view('bed_forward')
@@ -652,10 +691,13 @@ function show_dialog(dialog_key, sprite) {
 
   // show image (if available)
   if(dialog.image){
-    image_h_space = dialog.text ? GAME_HEIGHT * 0.8 : GAME_HEIGHT
-    image = game.add.sprite(GAME_WIDTH/2, image_h_space/2, 'dialogs/' + dialog_key);
+    var image = make_sprite('dialogs/' + dialog_key, dialog.animation_options);
     group.add(image);
-    image.anchor.setTo(0.5, 0.5)
+
+    image_h_space = dialog.text ? GAME_HEIGHT * 0.8 : GAME_HEIGHT
+    image.x = GAME_WIDTH/2;
+    image.y = image_h_space/2;
+
     game.add.tween(image).from({ y: sprite.y, x: sprite.x, alpha: 0 }, 700, "Linear", true);
     game.add.tween(image.scale).from({ y: 0.2, x: 0.2 }, 700, "Linear", true);
   }
