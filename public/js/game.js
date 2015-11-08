@@ -192,11 +192,21 @@ function preload() {
 }
 
 function create() {
-    state.preload_sprite.destroy();
-    state.preload_sprite = null;
+  if(DEBUG){
+    start_game();
+  } else {
+    game.time.events.add(Phaser.Timer.SECOND * 1, function(){
+      start_game();
+    });
+  }
+}
 
-    state.view_group = make_view_group(state.view_key, state.grunge_level);
-    game.add.tween(state.view_group).from({alpha: 0}, 2000, 'Linear', true);
+function start_game() {
+  state.preload_sprite.destroy();
+  state.preload_sprite = null;
+
+  state.view_group = make_view_group(state.view_key, state.grunge_level);
+  game.add.tween(state.view_group).from({alpha: 0}, 2000, 'Linear', true);
 }
 
 function render() {
@@ -360,9 +370,11 @@ function show_dialog(dialog_key, sprite) {
   bg.beginFill(0x000000, 0.7);
   bg.drawRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
   bg.endFill();
-  bg.inputEnabled = true;
-  bg.events.onInputDown.add(function(){ dismiss_dialog(blurs, group) });
-  game.add.tween(bg).from({ alpha: 0 }, 700, "Linear", true);
+  tween = game.add.tween(bg).from({ alpha: 0 }, 700, "Linear", true);
+  tween.onComplete.add(function(){
+    bg.inputEnabled = true;
+    bg.events.onInputDown.add(function(){ dismiss_dialog(blurs, group) });
+  });
 
   // show image (if available)
   if(dialog.image){
