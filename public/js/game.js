@@ -1,11 +1,10 @@
 var DEBUG = (window.location.search == "?debug");
+var DEBUG_STARTING_GRUNGE_LEVEL = 'grunge_02';
+var DEBUG_STARTING_VIEW_KEY = 'balcony';
+
 var GAME_WIDTH = 1280;
 var GAME_HEIGHT = 720;
-var GRUNGE_LEVELS = [
-  'normal',
-  'grunge_01',
-  'grunge_02',
-]
+var GRUNGE_LEVELS = ['normal', 'grunge_01', 'grunge_02']
 
 var ITEMS = {
   computer: {
@@ -58,6 +57,12 @@ var ITEMS = {
       grunge_02: { do_dialog: 'norofon_grunge02' },
     },
   },
+
+  monster: {
+    only_in_grunge_levels: ['grunge_02'],
+    has_view_image: true,
+    action: { do_cutscene: 'monster_fight', do_destroy: true },
+  }
 }
 
 var DIALOGS = {
@@ -116,6 +121,7 @@ var VIEWS = {
   balcony: {
     paths: { livingroom_backward: [102.5, 668] },
     enter_action: { do_dialog: 'enter_test' },
+    items: { monster: [720, 516] }
   },
 
   livingroom_backward: {
@@ -155,9 +161,9 @@ var VIEWS = {
 }
 
 var state = {
-  view_key: 'bed_forward',
+  view_key: (DEBUG ? DEBUG_STARTING_VIEW_KEY : 'bed_forward'),
   inventory: [],
-  grunge_level: GRUNGE_LEVELS[0],
+  grunge_level: (DEBUG ? DEBUG_STARTING_GRUNGE_LEVEL : GRUNGE_LEVELS[0]),
 
   view_group: null,
   last_click: null,
@@ -186,6 +192,8 @@ function preload() {
     }
   })
 
+  game.load.image('monster_close', 'assets/monster_close.png');
+
   //TODO: download these js files and serve them locally (in case they change)
   game.load.script('filterX', 'https://cdn.rawgit.com/photonstorm/phaser/master/filters/BlurX.js');
   game.load.script('filterY', 'https://cdn.rawgit.com/photonstorm/phaser/master/filters/BlurY.js');
@@ -206,7 +214,9 @@ function start_game() {
   state.preload_sprite = null;
 
   state.view_group = make_view_group(state.view_key, state.grunge_level);
-  game.add.tween(state.view_group).from({alpha: 0}, 2000, 'Linear', true);
+  if(!DEBUG){
+    game.add.tween(state.view_group).from({alpha: 0}, 2000, 'Linear', true);
+  }
 }
 
 function render() {
@@ -247,7 +257,7 @@ function make_view_group(view_key, grunge_level) {
   })
 
   _.each(v.items, function(coord, item_key){
-    var sprite = make_item_sprite(coord, item_key);
+    var sprite = make_item_sprite(coord, item_key, grunge_level);
     if(sprite)
       group.add(sprite);
   })
@@ -255,14 +265,26 @@ function make_view_group(view_key, grunge_level) {
   return group;
 }
 
-function make_item_sprite(coord, item_key){
+function make_item_sprite(coord, item_key, grunge_level){
     var item = ITEMS[item_key];
     if(item.destroyed)
       return null;
 
+    if(item.only_in_grunge_levels){
+      if(!_.contains(item.only_in_grunge_levels, grunge_level)){
+        return null;
+      }
+    }
+
     var group = game.add.group();
     group.x = coord[0];
     group.y = coord[1];
+
+    if(item.has_view_image){
+      var img = game.add.sprite(0, 0, 'items/'+item_key);
+      group.add(img);
+      img.anchor.setTo(0.5, 0.5);
+    }
 
     var circle = game.add.graphics(0, 0);
     group.add(circle);
@@ -274,12 +296,6 @@ function make_item_sprite(coord, item_key){
       item = get_item(item_key);
       perform_action(item.action, item, group);
     });
-
-    if(item.has_view_image){
-      var img = game.add.sprite(0, 0, 'items/'+item_key);
-      group.add(img);
-      img.anchor.setTo(0.5, 0.5);
-    }
 
     return group;
 }
@@ -307,6 +323,8 @@ function move_to_view(view_key) {
 }
 
 function perform_action(action, item, sprite) {
+  if(!action) return;
+
   if(action.do_give){
     state.inventory.push(action.do_give);
   }
@@ -332,6 +350,17 @@ function perform_action(action, item, sprite) {
   if(action.do_view){
     move_to_view(action.do_view);
   }
+
+  if(action.do_cutscene){
+    this[action.do_cutscene + '_cutscene'].call()
+  }
+}
+
+function monster_fight_cutscene(){
+  monster = game.add.sprite(GAME_WIDTH/2, GAME_HEIGHT, 'monster_close');
+  state.view_group.add(monster);
+  monster.anchor.setTo(0.5, 1.0);
+  game.add.tween(monster.scale).from({x: 0.6, y: 0.6}, 200, 'Bounce.easeOut', true);
 }
 
 function transition_to_grunge_level(new_grunge_level) {
