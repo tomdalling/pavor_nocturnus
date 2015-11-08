@@ -375,9 +375,8 @@ function preload() {
   game.load.image('title_screen', 'assets/title_screen.jpg');
   game.load.image('views/normal/balcony_ending', 'assets/views/normal/balcony_ending.jpg');
 
-  //TODO: download these js files and serve them locally (in case they change)
-  game.load.script('filterX', 'https://cdn.rawgit.com/photonstorm/phaser/master/filters/BlurX.js');
-  game.load.script('filterY', 'https://cdn.rawgit.com/photonstorm/phaser/master/filters/BlurY.js');
+  game.load.script('filterX', 'js/BlurX.js');
+  game.load.script('filterY', 'js/BlurY.js');
 }
 
 function preload_sprite(key, path, animation_options) {
