@@ -1,6 +1,7 @@
 var DEBUG = (window.location.search == "?debug");
 var DEBUG_STARTING_GRUNGE_LEVEL = 'grunge_02';
-var DEBUG_STARTING_VIEW_KEY = 'corridor';
+var DEBUG_STARTING_VIEW_KEY = 'livingroom_forward';
+var DEBUG_STARTING_INVENTORY = ['knife', 'key', 'cloth'];
 
 var GAME_WIDTH = 1280;
 var GAME_HEIGHT = 720;
@@ -17,14 +18,47 @@ var ITEMS = {
     has_view_image: false,
     action: {
       do_choose: function(){ return state.grunge_level },
-      normal:    { do_dialog: 'computer', do_grunge_level: 'grunge_01' },
-      grunge_01: { do_dialog: 'computer_original', do_grunge_level: 'grunge_02' },
+      normal:    { do_dialog: 'computer_normal' },
+      grunge_01: { do_dialog: 'computer_grunge_01' },
+      grunge_02: { do_dialog: 'computer_grunge_02' },
     }
   },
 
   key: {
     has_view_image: true,
     action: { do_dialog: 'key', do_give: 'key', do_destroy: true },
+  },
+
+  knife: {
+    has_view_image: true,
+    only_in_grunge_levels: ['grunge_01'],
+    action: {
+      do_dialog: 'got_knife',
+      do_give: 'knife',
+      do_destroy: true,
+      do_grunge_level: 'grunge_02',
+    },
+  },
+
+  cloth: {
+    has_view_image: true,
+    only_in_grunge_levels: ['grunge_01'],
+    action: { do_dialog: 'got_cloth', do_give: 'cloth', do_destroy: true },
+  },
+
+  collar: {
+    has_view_image: true,
+    action: { do_dialog: 'collar', do_destroy: true, do_grunge_level: 'grunge_01' },
+  },
+
+  dog_bed: {
+    has_view_image: false,
+    only_in_grunge_levels: ['normal', 'grunge_01'],
+    action: {
+      do_choose: function(){ return state.grunge_level },
+      normal:    { do_dialog: 'dog_bed_normal' },
+      grunge_01: { do_dialog: 'dog_bed_grunge_01' },
+    }
   },
 
   photo: {
@@ -37,42 +71,85 @@ var ITEMS = {
     },
   },
 
-  door: {
+  lotion: {
+    has_view_image: false,
+    action: {
+      do_choose: function(){ return state.grunge_level; },
+      normal:    { do_dialog: 'lotion_normal' },
+      grunge_01: { do_dialog: 'lotion_grunge_01' },
+      grunge_02: { do_dialog: 'lotion_grunge_02' },
+    }
+  },
+
+  balcony_door: {
     action: {
       do_choose: function(){ return player_has('key') ? 'unlocked' : 'locked'; },
-      locked: { do_dialog: 'door_locked' },
+      locked: { do_dialog: 'balcony_door_locked' },
+      unlocked: { do_view: 'balcony' },
+    }
+  },
+
+  corridor_door: {
+    action: {
+      do_choose: function(){
+        if(state.grunge_level == 'grunge_01' && !player_has('cloth')) {
+          return 'locked';
+        } else {
+          return 'unlocked';
+        }
+      },
       unlocked: { do_view: 'corridor' },
+      locked: { do_dialog: 'corridor_door_dirty' },
+    }
+  },
+
+  balcony_outside_door: {
+    action: {
+      do_choose: function(){ return player_has('knife') ? 'ending' : 'go_back' },
+      go_back: { do_view: 'livingroom_backward' },
+      ending: { do_cutscene: 'monster_fight', do_once: true }
     }
   },
 
   monster: {
     only_in_grunge_levels: ['grunge_02'],
     has_view_image: true,
-    action: { do_cutscene: 'monster_fight', do_destroy: true },
   }
 }
 
 var DIALOGS = {
-  key: {
-    text: 'Why does my house key have the Suzuki logo on it?',
-    image: true,
-  },
+  key: { image: true },
+  collar: { image: true, text: "Is that Sal's hair?" },
   computer: {
     text: 'What is Dix? This is foreign to me.',
     image: true,
   },
   computer_original: { text: 'Is that hacker news?' },
-  door_locked: { text: 'The door is locked.' },
+  balcony_door_locked: { text: 'The door is locked.' },
 
-  photo_normal: { image: true, text: 'My two girls. They must have gone for a walk.' },
+  photo_normal:    { image: true, text: 'My two girls. They must have gone for a walk.' },
   photo_grunge_01: { image: true, text: "They didn't go for a walk, did they?" },
   photo_grunge_02: { image: true, text: 'Sal?' },
 
+  lotion_normal:    { image: true, text: "Is that what makes her smell so damn good?" },
+  lotion_grunge_01: { image: true, text: "She forgot to take that." },
+  lotion_grunge_02: { image: true, text: "Stupid bitch left that here on purpose. She won't let me forget her." },
+
+  dog_bed_normal: { text: "Peach is getting too big for that." },
+  dog_bed_grunge_01: { text: "Where is that bloody dog?" },
+
+  computer_normal:    { image: true, text: "They look so good together."},
+  computer_grunge_01: { image: true, text: "Did I search that?"},
+  computer_grunge_02: { image: true, text: "What the hell?"},
+
+  corridor_door_dirty: { text: "I'm not touching that." },
+  got_cloth: { image: true, text: "I'll use this." },
+  got_knife: { image: true, text: "How did this get out here?" },
+
   // view enter_action dialogs
   bed_forward_normal: { text: "It's light out. Why didn't Sal wake me?" },
-  livingroom_backward_normal: { text: "Is that Sal's hair?" },
-  hallway_backward_entrance_normal: { text: "Sounds like it's coming from outside." },
-  corridor_grunge_02: { text: "Hello?" },
+  hallway_backward_entrance_grunge_01: { text: "What's that scratching?" },
+  corridor_grunge_02: { text: '"Hello?"'},
   bed_backward_grunge_02: { text: "Is that me?" },
 }
 
@@ -81,7 +158,7 @@ var VIEWS = {
     paths: { bed_backward: [890, 670] },
     enter_action: {
       do_choose: function(){ return state.grunge_level; },
-      normal: { do_dialog: 'bed_forward_normal' },
+      normal: { do_dialog: 'bed_forward_normal', do_once: true },
     }
   },
 
@@ -89,7 +166,7 @@ var VIEWS = {
     paths: { hallway_forward: [132.5, 663] },
     enter_action: {
       do_choose: function(){ return state.grunge_level; },
-      grunge_02: { do_dialog: 'bed_backward_grunge_02' },
+      grunge_02: { do_dialog: 'bed_backward_grunge_02', do_once: true },
     }
   },
 
@@ -104,27 +181,28 @@ var VIEWS = {
 
   livingroom_forward: {
     paths: {
-      balcony: [1225, 260],
       hallway_backward_couch: [641, 678],
     },
     items: {
       computer: [597, 289],
       photo: [123, 166],
+      key: [260, 248],
+      balcony_door: [1225, 260],
     },
   },
 
   balcony: {
-    paths: { livingroom_backward: [102.5, 668] },
-    items: { monster: [720, 516] }
+    paths: {},
+    items: {
+      balcony_outside_door: [102.5, 668],
+      monster: [720, 516],
+      dog_bed: [650, 668],
+    }
   },
 
   livingroom_backward: {
     paths: { hallway_backward_couch: [979, 106] },
-    items: { key: [610, 447] },
-    enter_action: {
-      do_choose: function(){ return state.grunge_level; },
-      normal: { do_dialog: 'livingroom_backward_normal' },
-    }
+    items: { collar: [915, 434] },
   },
 
   hallway_backward_entrance: {
@@ -132,10 +210,10 @@ var VIEWS = {
       hallway_forward: [658, 670],
       bathroom: [268, 343],
     },
-    items: { door: [694.5, 355] },
+    items: { corridor_door: [540, 312] },
     enter_action: {
       do_choose: function(){ return state.grunge_level; },
-      normal: { do_dialog: 'hallway_backward_entrance_normal' },
+      grunge_01: { do_dialog: 'hallway_backward_entrance_grunge_01', do_once: true },
     }
   },
 
@@ -148,24 +226,29 @@ var VIEWS = {
 
   corridor: {
     paths: { hallway_backward_entrance: [667, 680] },
+    items: { knife: [725, 541] },
     enter_action: {
       do_choose: function(){ return state.grunge_level; },
-      grunge_02: { do_dialog: 'corridor_grunge_02' },
+      grunge_02: { do_dialog: 'corridor_grunge_02', do_once: true },
     }
   },
 
   bathroom: {
-    paths: { hallway_forward: [1220, 494] },
-    items: {},
+    paths: { hallway_forward: [675, 670] },
+    items: {
+      lotion: [1072, 292],
+      cloth: [1185, 475],
+    },
   }
 }
 
 var state = {
   view_key: (DEBUG ? DEBUG_STARTING_VIEW_KEY : 'bed_forward'),
-  inventory: [],
+  inventory: (DEBUG ? DEBUG_STARTING_INVENTORY : []),
   grunge_level: (DEBUG ? DEBUG_STARTING_GRUNGE_LEVEL : GRUNGE_LEVELS[0]),
 
   view_group: null,
+  dialog_group: null,
   last_click: null,
   preload_sprite: null,
   grunge_level_audio: null,
@@ -318,8 +401,10 @@ function make_item_sprite(coord, item_key, grunge_level){
     circle.endFill();
     circle.inputEnabled = true;
     circle.events.onInputDown.add(function(){
-      item = get_item(item_key);
-      perform_action(item.action, item, group);
+      if(!state.dialog_group){
+        item = get_item(item_key);
+        perform_action(item.action, item, group);
+      }
     });
 
     return group;
@@ -342,16 +427,17 @@ function move_to_view(view_key) {
 function perform_view_action(view_key) {
   view = VIEWS[view_key];
   if(view.enter_action){
-    action = view.enter_action;
-    view.enter_action = null; // only do it once
-    game.time.events.add(Phaser.Timer.SECOND * 0.5, function(){
-      perform_action(action);
-    });
+    perform_action(view.enter_action);
   }
 }
 
 function perform_action(action, item, sprite) {
   if(!action) return;
+  if(action.already_done) return;
+
+  if(action.do_once){
+    action.already_done = true;
+  }
 
   if(action.do_give){
     state.inventory.push(action.do_give);
@@ -385,10 +471,12 @@ function perform_action(action, item, sprite) {
 }
 
 function monster_fight_cutscene(){
-  monster = game.add.sprite(GAME_WIDTH/2, GAME_HEIGHT, 'monster_close');
-  state.view_group.add(monster);
-  monster.anchor.setTo(0.5, 1.0);
-  game.add.tween(monster.scale).from({x: 0.6, y: 0.6}, 200, 'Bounce.easeOut', true);
+  game.time.events.add(3000, function(){
+    monster = game.add.sprite(GAME_WIDTH/2, GAME_HEIGHT, 'monster_close');
+    state.view_group.add(monster);
+    monster.anchor.setTo(0.5, 1.0);
+    game.add.tween(monster.scale).from({x: 0.6, y: 0.6}, 200, 'Bounce.easeOut', true);
+  });
 }
 
 function transition_to_grunge_level(new_grunge_level) {
@@ -409,6 +497,7 @@ function transition_to_grunge_level(new_grunge_level) {
 
 function show_dialog(dialog_key, sprite) {
   group = game.add.group();
+  state.dialog_group = group;
   dialog = DIALOGS[dialog_key];
   if(!dialog){
     console.log("Missing dialog '" + dialog_key + "'");
@@ -437,17 +526,17 @@ function show_dialog(dialog_key, sprite) {
 
   // show image (if available)
   if(dialog.image){
-    image_h_space = dialog.text ? GAME_HEIGHT * 0.7 : GAME_HEIGHT
+    image_h_space = dialog.text ? GAME_HEIGHT * 0.8 : GAME_HEIGHT
     image = game.add.sprite(GAME_WIDTH/2, image_h_space/2, 'dialogs/' + dialog_key);
     group.add(image);
     image.anchor.setTo(0.5, 0.5)
     game.add.tween(image).from({ y: sprite.y, x: sprite.x, alpha: 0 }, 700, "Linear", true);
-    game.add.tween(image.scale).from({ y: 0.2, x: 0.2 }, 1000, "Linear", true);
+    game.add.tween(image.scale).from({ y: 0.2, x: 0.2 }, 700, "Linear", true);
   }
 
   // show text (if available)
   if(dialog.text){
-    text_h_space = dialog.image ? GAME_HEIGHT * 0.3 : GAME_HEIGHT;
+    text_h_space = dialog.image ? GAME_HEIGHT * 0.2 : GAME_HEIGHT;
     text_style = { fill: "#fff", boundsAlignH: "center", boundsAlignV: "middle" };
     text = game.add.text(0, 0, dialog.text, text_style);
     group.add(text);
@@ -464,6 +553,7 @@ function dismiss_dialog(blurs, group) {
   tween = game.add.tween(group).to({alpha: 0}, 300, "Linear", true);
   tween.onComplete.add(function(){
     group.destroy();
+    state.dialog_group = null;
     state.view_group.filters = null;
   })
 }
